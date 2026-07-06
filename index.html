@@ -16,7 +16,7 @@
   .card{flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px 14px;text-align:center}
   .card .n{font-size:24px;font-weight:700;color:#2e7d32;line-height:1.1}
   .card .l{font-size:12px;color:#666;margin-top:2px}
-  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:20px}
+  .charts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
   .panel{background:#fff;border:1px solid #eee;border-radius:10px;padding:14px}
   .panel h3{margin:0 0 8px;font-size:13px}
   .panel canvas{height:230px!important}
@@ -36,12 +36,16 @@
   .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;color:#fff}
   a.src{color:#1565c0;text-decoration:none;font-size:12px}
   .rec{color:#b26a00;font-size:11px}
-  .toplist{margin:2px 0;padding-left:22px;font-size:13px;max-height:200px;overflow:auto}
-  .toplist li{margin:4px 0}
-  .toplist a{color:#1565c0;text-decoration:none}
-  .toplist .lk{color:#888;font-size:12px;white-space:nowrap}
+  #toplikes{max-height:210px;overflow:auto}
+  .minitable{width:100%;border-collapse:collapse;font-size:13px}
+  .minitable td{padding:4px 6px;border-bottom:1px solid #f2f2f2;vertical-align:top}
+  .minitable td.rank{width:26px;text-align:center;font-size:15px;color:#999}
+  .minitable td.ev a{color:#1565c0;text-decoration:none}
+  .minitable td.lk{text-align:right;color:#888;white-space:nowrap}
   .no-flyer th:first-child,.no-flyer td:first-child{display:none}
+  @media(max-width:1100px){ .charts{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:900px){ .wrap{padding:12px 14px} .cards{flex-wrap:wrap} .card{flex:1 1 calc(33.33% - 10px)} }
+  @media(max-width:700px){ .charts{grid-template-columns:1fr} }
   @media(max-width:560px){ .card{flex:1 1 calc(50% - 10px)} input#q{width:100%} #msaselect{min-width:0;flex:1} .tablebar .spacer{display:none} }
 </style></head><body><div class="wrap">
 <h1>State of MSAs — Dashboard</h1>
@@ -54,7 +58,7 @@
   <div class="panel"><h3>Activity over time (by month)</h3><canvas id="months"></canvas></div>
   <div class="panel"><h3>Audience</h3><canvas id="aud"></canvas></div>
   <div class="panel"><h3>Recurring events by type</h3><canvas id="recur"></canvas></div>
-  <div class="panel"><h3 id="topltitle">Top 10 events by likes</h3><ol id="toplikes" class="toplist"></ol></div>
+  <div class="panel"><h3 id="topltitle">Top 10 events by likes</h3><div id="toplikes"></div></div>
 </div>
 <h3 id="tabletitle">Events <span class="muted">(click "view post" to verify against the source)</span></h3>
 <div class="tablebar">
@@ -132,7 +136,9 @@ function renderCharts(s){
 function renderTopLikes(rows){
   const top=[...rows].filter(r=>r.likes!=null).sort((a,b)=>(b.likes||0)-(a.likes||0)).slice(0,10);
   document.getElementById('topltitle').textContent = activeMsa==='All'?'Top 10 events by likes':'Top 10 — '+activeMsa;
-  document.getElementById('toplikes').innerHTML = top.map(r=>`<li>${r.url?`<a href="${r.url}" target="_blank" rel="noopener">${r.title}</a>`:r.title} <span class="lk">${(r.likes||0).toLocaleString()} ♥</span></li>`).join('') || '<li class="muted">no data</li>';
+  const medal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+  const body=top.map((r,i)=>`<tr><td class="rank">${medal(i)}</td><td class="ev">${r.url?`<a href="${r.url}" target="_blank" rel="noopener">${r.title}</a>`:r.title}</td><td class="lk">${(r.likes||0).toLocaleString()} ♥</td></tr>`).join('');
+  document.getElementById('toplikes').innerHTML = top.length?`<table class="minitable">${body}</table>`:'<div class="muted">no data</div>';
 }
 function rowHtml(r){
   const img = r.img ? `<img class="thumb" src="${r.img}" loading="lazy">` : '<div class="thumb"></div>';

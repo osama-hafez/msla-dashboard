@@ -179,7 +179,7 @@ function renderAll(){
 
 document.getElementById('meta').textContent = `${D.rows.length} events across ${D.msas.length} MSAs`;
 const sel=document.getElementById('msaselect');
-sel.innerHTML = '<option value="All">All MSAs ('+D.rows.length+')</option>' + D.msas.map(m=>`<option value="${m}">${m}</option>`).join('');
+sel.innerHTML = '<option value="All">All MSAs</option>' + D.msas.map(m=>`<option value="${m}">${m}</option>`).join('');
 sel.onchange = () => selectMsa(sel.value);
 function selectMsa(name, updateHash=true){
   activeMsa=name; sel.value=name;

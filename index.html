@@ -36,6 +36,10 @@
   .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;color:#fff}
   a.src{color:#1565c0;text-decoration:none;font-size:12px}
   .rec{color:#b26a00;font-size:11px}
+  .toplist{margin:2px 0;padding-left:22px;font-size:13px;max-height:200px;overflow:auto}
+  .toplist li{margin:4px 0}
+  .toplist a{color:#1565c0;text-decoration:none}
+  .toplist .lk{color:#888;font-size:12px;white-space:nowrap}
   .no-flyer th:first-child,.no-flyer td:first-child{display:none}
   @media(max-width:900px){ .wrap{padding:12px 14px} .cards{flex-wrap:wrap} .card{flex:1 1 calc(33.33% - 10px)} }
   @media(max-width:560px){ .card{flex:1 1 calc(50% - 10px)} input#q{width:100%} #msaselect{min-width:0;flex:1} .tablebar .spacer{display:none} }
@@ -49,10 +53,13 @@
   <div class="panel"><h3><span id="chart2label">Top 10 MSAs</span> <select id="rankmetric" class="mini"></select></h3><canvas id="msas"></canvas></div>
   <div class="panel"><h3>Activity over time (by month)</h3><canvas id="months"></canvas></div>
   <div class="panel"><h3>Audience</h3><canvas id="aud"></canvas></div>
+  <div class="panel"><h3>Recurring events by type</h3><canvas id="recur"></canvas></div>
+  <div class="panel"><h3 id="topltitle">Top 10 events by likes</h3><ol id="toplikes" class="toplist"></ol></div>
 </div>
 <h3 id="tabletitle">Events <span class="muted">(click "view post" to verify against the source)</span></h3>
 <div class="tablebar">
-  <input id="q" placeholder="filter by title / MSA / type…" oninput="applyFilters()">
+  <input id="q" placeholder="search title / MSA…" oninput="applyFilters()">
+  <select id="typefilter"></select>
   <label class="muted">Sort <select id="sortby"><option value="recent">Most Recent</option><option value="likes">Most Liked</option><option value="comments">Most Comments</option></select></label>
   <span class="spacer"></span>
   <label class="muted">Show <select id="pagesize"><option selected>10</option><option>25</option><option>50</option></select> / page</label>
@@ -87,6 +94,7 @@ function stats(rows){
     byMonth:Object.fromEntries(Object.entries(count(rows.map(r=>r.month).filter(Boolean))).sort()),
     byAudience:count(rows.map(r=>r.audience)),
     byTypeEngagement:rows.reduce((m,r)=>{ if(r.type){m[r.type]=(m[r.type]||0)+(r.likes||0)} return m },{}),
+    byTypeRecurring:count(rows.filter(r=>r.recurring).map(r=>r.type)),
   };
 }
 // Top-10 MSAs (national) by a chosen metric: __all events, a specific type, or __likes.
@@ -119,7 +127,12 @@ function renderCharts(s){
     document.getElementById('chart2label').textContent='Engagement by type';
     charts.push(bars('msas',s.byTypeEngagement,{colormap:TYPE_COLORS,xtitle:'Total likes'}));
   }
-  charts.push(lines('months',s.byMonth), dough('aud',s.byAudience,AUD_COLORS));
+  charts.push(lines('months',s.byMonth), dough('aud',s.byAudience,AUD_COLORS), bars('recur',s.byTypeRecurring,{colormap:TYPE_COLORS,xtitle:'Recurring events'}));
+}
+function renderTopLikes(rows){
+  const top=[...rows].filter(r=>r.likes!=null).sort((a,b)=>(b.likes||0)-(a.likes||0)).slice(0,10);
+  document.getElementById('topltitle').textContent = activeMsa==='All'?'Top 10 events by likes':'Top 10 — '+activeMsa;
+  document.getElementById('toplikes').innerHTML = top.map(r=>`<li>${r.url?`<a href="${r.url}" target="_blank" rel="noopener">${r.title}</a>`:r.title} <span class="lk">${(r.likes||0).toLocaleString()} ♥</span></li>`).join('') || '<li class="muted">no data</li>';
 }
 function rowHtml(r){
   const img = r.img ? `<img class="thumb" src="${r.img}" loading="lazy">` : '<div class="thumb"></div>';
@@ -146,10 +159,15 @@ function sortRows(rows){
   else a.sort((x,y)=>(y.month||'').localeCompare(x.month||''));
   return a;
 }
-function applyFilters(){ filteredRows=sortRows(textFiltered(msaRows())); page=1; renderTablePage(); }
+function applyFilters(){
+  let rows=msaRows();
+  const tf=document.getElementById('typefilter').value;
+  if(tf) rows=rows.filter(r=>r.type===tf);
+  filteredRows=sortRows(textFiltered(rows)); page=1; renderTablePage();
+}
 function renderAll(){
   const rows=msaRows(), s=stats(rows);
-  renderCards(s); renderCharts(s); applyFilters();
+  renderCards(s); renderCharts(s); renderTopLikes(rows); applyFilters();
   document.getElementById('tabletitle').firstChild.textContent = (activeMsa==='All'?'Events ':activeMsa+' events ');
 }
 
@@ -167,6 +185,9 @@ function fromHash(){ const h=decodeURIComponent(location.hash.replace(/^#/,''));
 const rmEl=document.getElementById('rankmetric');
 rmEl.innerHTML = '<option value="__all">All Events</option>' + [...TYPES].sort((a,b)=>tc(a).localeCompare(tc(b))).map(t=>`<option value="${t}">${tc(t)}</option>`).join('') + '<option value="__likes">Engagement (Likes)</option>';
 rmEl.onchange = () => renderCharts(stats(msaRows()));
+const tfEl=document.getElementById('typefilter');
+tfEl.innerHTML = '<option value="">All Types</option>' + [...TYPES].sort((a,b)=>tc(a).localeCompare(tc(b))).map(t=>`<option value="${t}">${tc(t)}</option>`).join('');
+tfEl.onchange = applyFilters;
 document.getElementById('sortby').onchange = applyFilters;
 document.getElementById('pagesize').onchange = e=>{ pageSize=+e.target.value; page=1; renderTablePage(); };
 document.getElementById('prev').onclick = ()=>{ page--; renderTablePage(); };
